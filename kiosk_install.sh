@@ -19,6 +19,7 @@ fi
 
 
 USER_NAME="${SUDO_USER:-$(logname)}"
+USER_HOME=$(eval echo "~$USER_NAME")
 
 echo "Install user: $USER_NAME"
 echo "Install dir : $APP_DIR"
@@ -123,7 +124,7 @@ chown ${USER_NAME}:${USER_NAME} "${APP_DIR}/start-kiosk.sh"
 # XINITRC (pewny start X)
 # --------------------------------------------------
 sudo -u ${USER_NAME} bash <<EOF
-cat > /home/${USER_NAME}/.xinitrc <<'XRC'
+cat > "${USER_HOME}/.xinitrc" <<'XRC'
 openbox-session &
 sleep 2
 "${APP_DIR}/start-kiosk.sh"
@@ -142,7 +143,7 @@ Wants=kiosk-api.service
 [Service]
 User=${USER_NAME}
 Environment=DISPLAY=:0
-WorkingDirectory=/home/${USER_NAME}
+WorkingDirectory="${USER_HOME}"
 ExecStart=/usr/bin/startx
 Restart=always
 RestartSec=3

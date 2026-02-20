@@ -31,7 +31,7 @@ echo "=== KIOSK INSTALL START ==="
 # --------------------------------------------------
 apt update
 apt install -y --no-install-recommends \
-  python3 python3-venv python3-pip \
+  python3 python3-venv python3-pip python3-dev \
   xserver-xorg x11-xserver-utils xinit openbox \
   chromium unclutter \
   fonts-dejavu curl
@@ -56,7 +56,7 @@ cd "${APP_DIR}"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install fastapi "uvicorn[standard]"
+pip install fastapi uvicorn
 EOF
 
 # --------------------------------------------------

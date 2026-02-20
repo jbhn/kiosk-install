@@ -134,7 +134,10 @@ chown ${USER_NAME}:${USER_NAME} ${APP_DIR}/start-kiosk.sh
 # XINITRC (pewny start X)
 # --------------------------------------------------
 
-sudo -u "$USER_NAME" bash <<EOF
+echo "=== KIOSK XINITRC SETUP ==="
+
+
+sudo -u ${USER_NAME} bash <<EOF
 cat > "$USER_HOME/.xinitrc" <<XRC
 #!/bin/sh
 xset s off
@@ -150,6 +153,8 @@ EOF
 # Autologin on tty1 for KIOSK_USER
 # ------------------
 
+echo "=== AUTOLOGIN SETUP ==="
+
 mkdir -p /etc/systemd/system/getty@tty1.service.d
 cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
 [Service]
@@ -162,11 +167,14 @@ EOF
 # Start X automatically on tty1 (in .bash_profile)
 # -----------------------------
 # Dodajemy blok tylko jeśli go nie ma, żeby nie dublować
-BASH_PROFILE="$KIOSK_HOME/.bash_profile"
+
+echo "=== AUTO START X SETUP ==="
+
+BASH_PROFILE="$USER_HOME/.bash_profile"
 MARK_BEGIN="# --- kiosk autostart begin ---"
 MARK_END="# --- kiosk autostart end ---"
 
-sudo -u "$KIOSK_USER" bash <<EOF
+sudo -u ${USER_NAME} bash <<EOF
 set -e
 touch "$BASH_PROFILE"
 if ! grep -qF "$MARK_BEGIN" "$BASH_PROFILE"; then

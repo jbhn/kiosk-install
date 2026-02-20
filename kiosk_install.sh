@@ -8,18 +8,9 @@ fi
 
 set -e
 
-DEFAULT_APP_DIR="/opt/kiosk"
-
-APP_DIR="${1:-$DEFAULT_APP_DIR}"
-
-if [[ "$APP_DIR" != /* ]]; then
-  echo "APP_DIR musi być ścieżką absolutną"
-  exit 1
-fi
-
-
-USER_NAME="${SUDO_USER:-$(logname)}"
-USER_HOME=$(eval echo "~$USER_NAME")
+APP_DIR="/opt/kiosk"
+USER_NAME=pi
+USER_HOME=/home/pi
 
 echo "Install user: $USER_NAME"
 echo "Install dir : $APP_DIR"
@@ -42,8 +33,8 @@ apt install -y --no-install-recommends \
 
 echo "=== APP DIRECTORY SETUP ==="
 
-mkdir -p "${APP_DIR}"
-chown -R ${USER_NAME}:${USER_NAME} "${APP_DIR}"
+mkdir -p ${APP_DIR}
+chown -R ${USER_NAME}:${USER_NAME} ${APP_DIR}
 
 # --------------------------------------------------
 # PYTHON ENV
@@ -52,7 +43,7 @@ chown -R ${USER_NAME}:${USER_NAME} "${APP_DIR}"
 echo "=== PYTHON ENV SETUP ==="
 
 sudo -u ${USER_NAME} bash <<EOF
-cd "${APP_DIR}"
+cd ${APP_DIR}
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -65,7 +56,7 @@ EOF
 
 echo "=== FASTAPI APP SETUP ==="
 
-cat > "${APP_DIR}/app.py" <<'PY'
+cat > ${APP_DIR}/app.py <<'PY'
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
@@ -83,7 +74,7 @@ def root():
     """
 PY
 
-chown ${USER_NAME}:${USER_NAME} "${APP_DIR}/app.py"
+chown ${USER_NAME}:${USER_NAME} ${APP_DIR}/app.py
 
 # --------------------------------------------------
 # FASTAPI SERVICE
@@ -123,8 +114,12 @@ xset -dpms
 
 unclutter -idle 0.1 -root &
 
-chromium \
+exec chromium \
   --kiosk --app=http://127.0.0.1:8000/ \
+  --ozone-platform=x11 \
+  --enable-features=UseOzonePlatform \
+  --disable-gpu-compositing \
+  --disable-gpu-rasterization \
   --noerrdialogs \
   --disable-infobars \
   --disable-session-crashed-bubble \
@@ -133,45 +128,61 @@ chromium \
 SH
 
 chmod +x "${APP_DIR}/start-kiosk.sh"
-chown ${USER_NAME}:${USER_NAME} "${APP_DIR}/start-kiosk.sh"
+chown ${USER_NAME}:${USER_NAME} ${APP_DIR}/start-kiosk.sh
 
 # --------------------------------------------------
 # XINITRC (pewny start X)
 # --------------------------------------------------
 
-echo "=== XINITRC SETUP ==="
-
-sudo -u ${USER_NAME} bash <<EOF
-cat > "${USER_HOME}/.xinitrc" <<XRC
-openbox-session &
-sleep 2
-exec ${APP_DIR}/start-kiosk.sh
+sudo -u "$USER_NAME" bash <<EOF
+cat > "$USER_HOME/.xinitrc" <<XRC
+#!/bin/sh
+xset s off
+xset -dpms
+xset s noblank
+unclutter -idle 0.2 -root &
+exec $APP_DIR/start-kiosk.sh
 XRC
+chmod 700 "$USER_HOME/.xinitrc"
 EOF
 
-# --------------------------------------------------
-# UI SERVICE (X + Chromium)
-# --------------------------------------------------
+# -----------------------------
+# Autologin on tty1 for KIOSK_USER
+# ------------------
 
-echo "=== UI SERVICE SETUP ==="
-
-cat > /etc/systemd/system/kiosk-ui.service <<EOF
-[Unit]
-Description=Kiosk UI
-After=systemd-user-sessions.service kiosk-api.service
-Wants=kiosk-api.service
-
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
 [Service]
-User=${USER_NAME}
-Environment=DISPLAY=:0
-WorkingDirectory=${USER_HOME}
-ExecStart=/usr/bin/startx
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $USER_NAME --noclear %I \$TERM
 EOF
+
+
+# -----------------------------
+# Start X automatically on tty1 (in .bash_profile)
+# -----------------------------
+# Dodajemy blok tylko jeśli go nie ma, żeby nie dublować
+BASH_PROFILE="$KIOSK_HOME/.bash_profile"
+MARK_BEGIN="# --- kiosk autostart begin ---"
+MARK_END="# --- kiosk autostart end ---"
+
+sudo -u "$KIOSK_USER" bash <<EOF
+set -e
+touch "$BASH_PROFILE"
+if ! grep -qF "$MARK_BEGIN" "$BASH_PROFILE"; then
+  cat >> "$BASH_PROFILE" <<'PROFILE'
+
+# --- kiosk autostart begin ---
+# Start X tylko na konsoli tty1, nie przez SSH
+if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+  startx
+fi
+# --- kiosk autostart end ---
+PROFILE
+fi
+EOF
+
+
 
 # --------------------------------------------------
 # ENABLE SERVICES
@@ -181,7 +192,6 @@ echo "=== ENABLING SERVICES ==="
 
 systemctl daemon-reload
 systemctl enable kiosk-api.service
-systemctl enable kiosk-ui.service
 
 echo "=== INSTALL DONE ==="
 echo "Reboot system now:"

@@ -87,8 +87,8 @@ After=network.target
 [Service]
 Type=simple
 User=${USER_NAME}
-WorkingDirectory="${APP_DIR}"
-ExecStart="${APP_DIR}/.venv/bin/uvicorn" app:app --host 127.0.0.1 --port 8000
+WorkingDirectory=${APP_DIR}
+ExecStart=${APP_DIR}/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=2
 
@@ -124,10 +124,10 @@ chown ${USER_NAME}:${USER_NAME} "${APP_DIR}/start-kiosk.sh"
 # XINITRC (pewny start X)
 # --------------------------------------------------
 sudo -u ${USER_NAME} bash <<EOF
-cat > "${USER_HOME}/.xinitrc" <<'XRC'
+cat > "${USER_HOME}/.xinitrc" <<XRC
 openbox-session &
 sleep 2
-"${APP_DIR}/start-kiosk.sh"
+exec ${APP_DIR}/start-kiosk.sh
 XRC
 EOF
 
@@ -143,7 +143,7 @@ Wants=kiosk-api.service
 [Service]
 User=${USER_NAME}
 Environment=DISPLAY=:0
-WorkingDirectory="${USER_HOME}"
+WorkingDirectory=${USER_HOME}
 ExecStart=/usr/bin/startx
 Restart=always
 RestartSec=3

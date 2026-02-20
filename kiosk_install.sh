@@ -31,7 +31,7 @@ echo "=== KIOSK INSTALL START ==="
 # --------------------------------------------------
 apt update
 apt install -y --no-install-recommends \
-  python3 python3-venv python3-pip python3-dev \
+  python3 python3-venv python3-pip python3-dev python3-xdg \
   xserver-xorg x11-xserver-utils xinit openbox \
   chromium unclutter \
   fonts-dejavu curl

@@ -33,7 +33,7 @@ apt update
 apt install -y --no-install-recommends \
   python3 python3-venv python3-pip \
   xserver-xorg x11-xserver-utils xinit openbox \
-  chromium-browser unclutter \
+  chromium unclutter \
   fonts-dejavu curl
 
 # --------------------------------------------------
@@ -108,7 +108,7 @@ xset -dpms
 
 unclutter -idle 0.1 -root &
 
-chromium-browser \
+chromium \
   --kiosk --app=http://127.0.0.1:8000/ \
   --noerrdialogs \
   --disable-infobars \

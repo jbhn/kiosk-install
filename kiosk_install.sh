@@ -7,7 +7,7 @@ fi
 
 set -e
 
-FILES_DIR="$SCRIPT_DIR/files"
+FILES_DIR="./files"
 
 echo "Install user: pi"
 echo "Install dir : /home/pi"

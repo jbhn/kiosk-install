@@ -39,12 +39,18 @@ apt install -y --no-install-recommends \
 # --------------------------------------------------
 # APP DIRECTORY
 # --------------------------------------------------
+
+echo "=== APP DIRECTORY SETUP ==="
+
 mkdir -p "${APP_DIR}"
 chown -R ${USER_NAME}:${USER_NAME} "${APP_DIR}"
 
 # --------------------------------------------------
 # PYTHON ENV
 # --------------------------------------------------
+
+echo "=== PYTHON ENV SETUP ==="
+
 sudo -u ${USER_NAME} bash <<EOF
 cd "${APP_DIR}"
 python3 -m venv .venv
@@ -56,6 +62,9 @@ EOF
 # --------------------------------------------------
 # FASTAPI APP
 # --------------------------------------------------
+
+echo "=== FASTAPI APP SETUP ==="
+
 cat > "${APP_DIR}/app.py" <<'PY'
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -79,6 +88,9 @@ chown ${USER_NAME}:${USER_NAME} "${APP_DIR}/app.py"
 # --------------------------------------------------
 # FASTAPI SERVICE
 # --------------------------------------------------
+
+echo "=== FASTAPI SERVICE SETUP ==="
+
 cat > /etc/systemd/system/kiosk-api.service <<EOF
 [Unit]
 Description=Kiosk FastAPI
@@ -99,6 +111,9 @@ EOF
 # --------------------------------------------------
 # KIOSK START SCRIPT
 # --------------------------------------------------
+
+echo "=== KIOSK START SCRIPT SETUP ==="
+
 cat > "${APP_DIR}/start-kiosk.sh" <<'SH'
 #!/bin/bash
 
@@ -123,6 +138,9 @@ chown ${USER_NAME}:${USER_NAME} "${APP_DIR}/start-kiosk.sh"
 # --------------------------------------------------
 # XINITRC (pewny start X)
 # --------------------------------------------------
+
+echo "=== XINITRC SETUP ==="
+
 sudo -u ${USER_NAME} bash <<EOF
 cat > "${USER_HOME}/.xinitrc" <<XRC
 openbox-session &
@@ -134,6 +152,9 @@ EOF
 # --------------------------------------------------
 # UI SERVICE (X + Chromium)
 # --------------------------------------------------
+
+echo "=== UI SERVICE SETUP ==="
+
 cat > /etc/systemd/system/kiosk-ui.service <<EOF
 [Unit]
 Description=Kiosk UI
@@ -155,6 +176,9 @@ EOF
 # --------------------------------------------------
 # ENABLE SERVICES
 # --------------------------------------------------
+
+echo "=== ENABLING SERVICES ==="
+
 systemctl daemon-reload
 systemctl enable kiosk-api.service
 systemctl enable kiosk-ui.service

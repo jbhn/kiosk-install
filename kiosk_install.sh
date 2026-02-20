@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 
 if [ "$EUID" -ne 0 ]; then
-  echo "Uruchom przez sudo:"
-  echo "sudo bash install_kiosk.sh"
+  echo "Run as su:"
   exit 1
 fi
 
 set -e
 
-APP_DIR="/opt/kiosk"
-USER_NAME=pi
-USER_HOME=/home/pi
+FILES_DIR="$SCRIPT_DIR/files"
 
-echo "Install user: $USER_NAME"
-echo "Install dir : $APP_DIR"
+echo "Install user: pi"
+echo "Install dir : /home/pi"
 
 echo "=== KIOSK INSTALL START ==="
 
@@ -33,8 +30,8 @@ apt install -y --no-install-recommends \
 
 echo "=== APP DIRECTORY SETUP ==="
 
-mkdir -p ${APP_DIR}
-chown -R ${USER_NAME}:${USER_NAME} ${APP_DIR}
+mkdir -p /opt/kiosk
+chown -R pi:pi /opt/kiosk
 
 # --------------------------------------------------
 # PYTHON ENV
@@ -42,8 +39,8 @@ chown -R ${USER_NAME}:${USER_NAME} ${APP_DIR}
 
 echo "=== PYTHON ENV SETUP ==="
 
-sudo -u ${USER_NAME} bash <<EOF
-cd ${APP_DIR}
+sudo -u pi bash <<EOF
+cd /opt/kiosk
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -56,25 +53,10 @@ EOF
 
 echo "=== FASTAPI APP SETUP ==="
 
-cat > ${APP_DIR}/app.py <<'PY'
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+install -m 0644 "$FILES_DIR/opt_kiosk/app.py" "/opt/kiosk/app.py"
+install -m 0755 "$FILES_DIR/opt_kiosk/start-kiosk.sh" "/opt/kiosk/start-kiosk.sh"
+chown pi:pi "/opt/kiosk/app.py" "/opt/kiosk/start-kiosk.sh"
 
-app = FastAPI()
-
-@app.get("/", response_class=HTMLResponse)
-def root():
-    return """
-    <html>
-    <body style="background:#111;color:#eee;font-family:sans-serif;">
-        <h1>Kiosk OK</h1>
-        <p>FastAPI działa</p>
-    </body>
-    </html>
-    """
-PY
-
-chown ${USER_NAME}:${USER_NAME} ${APP_DIR}/app.py
 
 # --------------------------------------------------
 # FASTAPI SERVICE
@@ -82,125 +64,27 @@ chown ${USER_NAME}:${USER_NAME} ${APP_DIR}/app.py
 
 echo "=== FASTAPI SERVICE SETUP ==="
 
-cat > /etc/systemd/system/kiosk-api.service <<EOF
-[Unit]
-Description=Kiosk FastAPI
-After=network.target
-
-[Service]
-Type=simple
-User=${USER_NAME}
-WorkingDirectory=${APP_DIR}
-ExecStart=${APP_DIR}/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
-Restart=always
-RestartSec=2
-
-[Install]
-WantedBy=multi-user.target
-EOF
+install -m 0644 "$FILES_DIR/systemd/kiosk-api.service" /etc/systemd/system/kiosk-api.service
 
 # --------------------------------------------------
-# KIOSK START SCRIPT
+# AUTOLOGIN SETUP
 # --------------------------------------------------
-
-echo "=== KIOSK START SCRIPT SETUP ==="
-
-cat > "${APP_DIR}/start-kiosk.sh" <<'SH'
-#!/bin/bash
-
-xset s off
-xset s noblank
-xset -dpms
-
-unclutter -idle 0.1 -root &
-
-exec chromium \
-  --kiosk --app=http://127.0.0.1:8000/ \
-  --ozone-platform=x11 \
-  --enable-features=UseOzonePlatform \
-  --disable-gpu-compositing \
-  --disable-gpu-rasterization \
-  --noerrdialogs \
-  --disable-infobars \
-  --disable-session-crashed-bubble \
-  --overscroll-history-navigation=0 \
-  --check-for-update-interval=31536000
-SH
-
-chmod +x "${APP_DIR}/start-kiosk.sh"
-chown ${USER_NAME}:${USER_NAME} ${APP_DIR}/start-kiosk.sh
-
-# --------------------------------------------------
-# XINITRC (pewny start X)
-# --------------------------------------------------
-
-echo "=== KIOSK XINITRC SETUP ==="
-
-
-sudo -u ${USER_NAME} bash <<EOF
-cat > "$USER_HOME/.xinitrc" <<XRC
-#!/bin/sh
-xset s off
-xset -dpms
-xset s noblank
-unclutter -idle 0.2 -root &
-exec $APP_DIR/start-kiosk.sh
-XRC
-chmod 700 "$USER_HOME/.xinitrc"
-EOF
-
-# -----------------------------
-# Autologin on tty1 for KIOSK_USER
-# ------------------
-
-echo "=== AUTOLOGIN SETUP ==="
 
 mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin $USER_NAME --noclear %I \$TERM
-EOF
+install -m 0644 "$FILES_DIR/systemd/getty@tty1-autologin.conf" /etc/systemd/system/getty@tty1.service.d/autologin.conf
 
+install -m 0700 "$FILES_DIR/home_pi/.xinitrc" /home/pi/.xinitrc
+chown pi:pi /home/pi/.xinitrc
 
-# -----------------------------
-# Start X automatically on tty1 (in .bash_profile)
-# -----------------------------
-# Dodajemy blok tylko jeśli go nie ma, żeby nie dublować
-
-echo "=== AUTO START X SETUP ==="
-
-BASH_PROFILE="$USER_HOME/.bash_profile"
+BASH_PROFILE="/home/pi/.bash_profile"
 MARK_BEGIN="# --- kiosk autostart begin ---"
-MARK_END="# --- kiosk autostart end ---"
-
-sudo -u ${USER_NAME} bash <<EOF
-set -e
-touch "$BASH_PROFILE"
-if ! grep -qF "$MARK_BEGIN" "$BASH_PROFILE"; then
-  cat >> "$BASH_PROFILE" <<'PROFILE'
-
-# --- kiosk autostart begin ---
-# Start X tylko na konsoli tty1, nie przez SSH
-if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-  startx
+if [ ! -f "$BASH_PROFILE" ]; then
+  touch "$BASH_PROFILE"
+  chown pi:pi "$BASH_PROFILE"
 fi
-# --- kiosk autostart end ---
-PROFILE
-fi
-EOF
-
-
-
-# --------------------------------------------------
-# ENABLE SERVICES
-# --------------------------------------------------
-
-echo "=== ENABLING SERVICES ==="
 
 systemctl daemon-reload
-systemctl enable kiosk-api.service
+systemctl enable --now kiosk-api.service
 
 echo "=== INSTALL DONE ==="
-echo "Reboot system now:"
-echo "sudo reboot"
+echo "Now time to start: sudo reboot"

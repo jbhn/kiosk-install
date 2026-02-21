@@ -9,3 +9,4 @@ mkdir -p /opt/kiosk
 chown pi:pi /opt/kiosk
 
 install -m775 -o pi -g pi files/run-kiosk.sh /opt/kiosk/kiosk.sh
+install -m775 -o pi -g pi files/app.py /opt/kiosk/app.py

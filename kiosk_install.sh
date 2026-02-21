@@ -16,7 +16,7 @@ bash install_steps/step2.sh
 echo "### STEP 3: Installing Chromium"
 bash install_steps/step3.sh
 
-echo "### Step 4: Create kiosk startup script"
+echo "### Step 4: Create kiosk and startup script"
 bash install_steps/step4.sh
 
 echo "### Step 5: Add kiosk startup to .bashrc"

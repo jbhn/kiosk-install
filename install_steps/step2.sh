@@ -5,7 +5,7 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-apt install -y --no-install-dependencies \
+apt install -y \
     xserver-xorg \
     xinit \
     x11-xserver-utils \

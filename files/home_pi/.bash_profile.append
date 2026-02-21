@@ -1,7 +1,0 @@
-
-# --- kiosk autostart begin ---
-# Start X tylko na konsoli tty1, nie przez SSH
-if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-  startx
-fi
-# --- kiosk autostart end ---

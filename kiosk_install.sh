@@ -19,4 +19,5 @@ bash install_steps/step3.sh
 echo "### Step 4: Create kiosk startup script"
 bash install_steps/step4.sh
 
-
+echo "### Step 5: Add kiosk startup to .bashrc"
+bash install_steps/step5.sh

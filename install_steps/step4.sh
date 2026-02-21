@@ -5,9 +5,6 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-apt update
-
-
 mkdir -p /opt/kiosk
 chown pi:pi /opt/kiosk
 

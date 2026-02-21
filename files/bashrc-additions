@@ -1,0 +1,10 @@
+
+
+### RUN KIOSK ON LOGIN
+
+if [ -z "$SSH_TTY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+  xinit /opt/kiosk/kiosk.sh -- vt$(fgconsole)
+fi
+
+
+
